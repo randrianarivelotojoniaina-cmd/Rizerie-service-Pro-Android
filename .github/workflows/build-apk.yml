@@ -18,7 +18,7 @@ jobs:
 
       - name: Extraire le projet
         run: |
-          unzip -q Rizerie_V2_5_APK_Source.zip -d source
+          unzip -q Rizerie_V2_6_Icone_Officielle_Source.zip -d source
           test -f source/android/settings.gradle
           test -f source/android/app/build.gradle
 
