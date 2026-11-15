@@ -1,0 +1,88 @@
+name: Rizerie Windows V2.7 Test Portable
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows:
+    runs-on: windows-2022
+    timeout-minutes: 50
+
+    steps:
+      - name: Recuperer les fichiers
+        uses: actions/checkout@v4
+
+      - name: Extraire le ZIP Windows
+        shell: pwsh
+        run: |
+          $zip = 'Rizerie_Windows_V27.zip'
+          if (-not (Test-Path $zip)) { throw "ZIP introuvable : $zip" }
+          Expand-Archive -LiteralPath $zip -DestinationPath source -Force
+          if (-not (Test-Path 'source/desktop/app/main.js')) { throw 'Source Windows manquante' }
+          if (-not (Test-Path 'source/desktop/app/package.json')) { throw 'package.json manquant' }
+
+      - name: Isoler la base de test de la V2.5
+        shell: pwsh
+        run: |
+          $file = 'source/desktop/app/main.js'
+          $code = Get-Content -LiteralPath $file -Raw -Encoding UTF8
+          $before = "app.getPath('userData'),'RizerieServicePro');"
+          $after = "app.getPath('userData'),'RizerieServiceProV27Test');"
+          if (-not $code.Contains($before)) { throw 'Emplacement de la base non reconnu : annulation pour securite' }
+          $code = $code.Replace($before, $after)
+          $code = $code.Replace("app.setName('Rizerie Service Pro');", "app.setName('Rizerie Service Pro V2.7 Test');")
+          Set-Content -LiteralPath $file -Value $code -Encoding UTF8
+
+      - name: Configurer Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Tester les corrections
+        shell: pwsh
+        run: |
+          node source/tests/sync_correction.test.js
+          node source/tests/site_link.test.js
+          node source/tests/qr_pairing.test.js
+
+      - name: Construire le programme Windows portable
+        shell: pwsh
+        run: |
+          Push-Location source/desktop/app
+          npm install --no-audit --no-fund
+          if ($LASTEXITCODE -ne 0) { throw 'Installation des dependances echouee' }
+          npm install --save-dev --no-audit --no-fund electron@45.3.2 @electron/packager@20.3.0
+          if ($LASTEXITCODE -ne 0) { throw 'Installation des outils Electron echouee' }
+          npx electron-packager . RizerieServiceProV27Test --platform=win32 --arch=x64 --electron-version=45.3.2 --out=../../../dist --overwrite --icon=icon.ico --asar
+          if ($LASTEXITCODE -ne 0) { throw 'Packaging Windows echoue' }
+          Pop-Location
+          if (-not (Test-Path 'dist/RizerieServiceProV27Test-win32-x64/RizerieServiceProV27Test.exe')) { throw 'EXE non trouve apres compilation' }
+
+      - name: Ajouter les instructions de test
+        shell: pwsh
+        run: |
+          @'
+          RIZERIE SERVICE PRO V2.7 TEST - WINDOWS PORTABLE
+
+          1. Decompressez TOUT le dossier avant de lancer le logiciel.
+          2. Fermez Rizerie V2.5 avant tout test.
+          3. Double-cliquez sur RizerieServiceProV27Test.exe.
+          4. Cette version utilise une base distincte :
+             %LOCALAPPDATA%\RizerieServiceProV27Test\data
+          5. La base V2.5 d'origine n'est pas remplacee.
+          6. Testez uniquement avec des donnees fictives.
+          7. QR Code = connexion/test reseau, PAS de transfert automatique.
+
+          Cette version est un programme portable de test, PAS un installateur Windows.
+          '@ | Set-Content -LiteralPath 'dist/RizerieServiceProV27Test-win32-x64/LISEZ_MOI.txt' -Encoding UTF8
+
+      - name: Publier l'application Windows
+        uses: actions/upload-artifact@v4
+        with:
+          name: Rizerie-Windows-V27-Test-Portable
+          path: dist/RizerieServiceProV27Test-win32-x64/
+          if-no-files-found: error
+          retention-days: 14
