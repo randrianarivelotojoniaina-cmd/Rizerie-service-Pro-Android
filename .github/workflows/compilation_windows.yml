@@ -18,7 +18,7 @@ jobs:
       - name: Extraire le ZIP Windows
         shell: pwsh
         run: |
-          $zip = 'Rizerie_Windows_V27.zip'
+          $zip = 'Rizerie_Windows_FIX.zip'
           if (-not (Test-Path $zip)) { throw "ZIP introuvable : $zip" }
           Expand-Archive -LiteralPath $zip -DestinationPath source -Force
           if (-not (Test-Path 'source/desktop/app/main.js')) { throw 'Source Windows manquante' }
