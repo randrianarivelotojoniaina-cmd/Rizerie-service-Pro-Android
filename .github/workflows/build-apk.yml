@@ -19,7 +19,7 @@ jobs:
       - name: Extraire le ZIP Android
         run: |
           set -euo pipefail
-          unzip -q Rizerie_V27_Android_QR_Correctif_Source.zip -d source
+          unzip -q Rizerie_Android_FIX.zip -d source
           test -f source/android/app/src/main/java/mg/rizerie/servicepro/QrScannerActivity.java
 
       - name: Configurer Java 17
